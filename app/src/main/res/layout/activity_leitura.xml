@@ -6,4 +6,21 @@
     android:layout_height="match_parent"
     tools:context=".LeituraActivity">
 
+    <Button
+        android:id="@+id/btn_leitura"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Ler"
+        app:layout_constraintBottom_toTopOf="@+id/lv_tags"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <ListView
+        android:id="@+id/lv_tags"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
 </androidx.constraintlayout.widget.ConstraintLayout>

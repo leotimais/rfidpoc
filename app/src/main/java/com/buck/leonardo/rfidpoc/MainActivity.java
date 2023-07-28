@@ -42,6 +42,8 @@ public class MainActivity extends AppCompatActivity {
     private App mApp;
     private RfidManager mRfidMgr;
 
+    private static final String TAG = "MainActivity";
+
     private BroadcastReceiver bluetoothReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -84,7 +86,6 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -92,6 +93,8 @@ public class MainActivity extends AppCompatActivity {
 
         mApp = (App) getApplication();
         mRfidMgr = mApp.getRfidManager();
+
+        mRfidMgr.addEventListener(mEventListener);
 
         ListView deviceListView = findViewById(R.id.device_list_view);
         deviceList = new ArrayList<>();
@@ -114,9 +117,6 @@ public class MainActivity extends AppCompatActivity {
                 mRfidMgr.connect(selectedDevice.getAddress());
                 Toast.makeText(MainActivity.this, "Estado do RFID: " + mRfidMgr.getConnectionState(), Toast.LENGTH_SHORT).show();
                 mRfidMgr.createReader();
-
-//                Intent intent = new Intent(MainActivity.this, LeituraActivity.class);
-//                startActivity(intent);
             }
         });
 
@@ -127,32 +127,10 @@ public class MainActivity extends AppCompatActivity {
             finish();
         }
 
-//        if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH) != PackageManager.PERMISSION_GRANTED) {
-//            // Permissão não concedida, solicite ao usuário
-//            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.BLUETOOTH}, REQUEST_BLUETOOTH_PERMISSION);
-//        } else {
-//            // Permissão já concedida, inicie a descoberta de dispositivos Bluetooth
-//            startBluetoothDiscovery();
-//        }
-
         requestBluetoothePermission();
     }
 
     private void requestBluetoothePermission() {
-//        if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_DENIED) {
-//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-//            {
-//                ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.BLUETOOTH_SCAN}, 2);
-//                return;
-//            }
-//        }
-
-//        if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.BLUETOOTH_SCAN))
-//        {
-//        }
-//
-//        ActivityCompat.requestPermissions(this, new String[] { Manifest.permission.BLUETOOTH_SCAN}, BLUETOOTH_PERMISSION_CODE);
-
         if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_DENIED) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.BLUETOOTH_SCAN},2);
@@ -170,7 +148,15 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        mRfidMgr.addEventListener(mEventListner);
+        mRfidMgr.addEventListener(mEventListener);
+        Log.i(TAG, "onResume");
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        mRfidMgr.removeEventListener(mEventListener);
+        Log.i(TAG, "onPause");
     }
 
     @Override
@@ -236,7 +222,7 @@ public class MainActivity extends AppCompatActivity {
                 new String[]{permissionName}, 0);
     }
 
-    private EventListener mEventListner = new EventListener() {
+    private EventListener mEventListener = new EventListener() {
         @Override
         public void onDeviceConnected(Object data) {
             Log.i("MainActivity", "onDeviceConnected: " + data);

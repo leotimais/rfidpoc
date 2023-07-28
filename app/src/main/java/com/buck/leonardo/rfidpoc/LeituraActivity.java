@@ -1,6 +1,8 @@
 package com.buck.leonardo.rfidpoc;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 import android.view.View;
 import android.widget.ArrayAdapter;
@@ -8,6 +10,7 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.honeywell.rfidservice.rfid.RfidReader;
@@ -21,6 +24,9 @@ public class LeituraActivity extends AppCompatActivity {
     private App mApp;
     private List<String> tagsList;
     private ArrayAdapter<String> tagsListAdapter;
+    private Handler mUiHandler;
+
+    private static final String TAG = "LeituraActivity";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,6 +49,33 @@ public class LeituraActivity extends AppCompatActivity {
         tagsListView.setAdapter(tagsListAdapter);
 
         mApp = App.getInstance();
+
+        initHandler();
+    }
+
+    private void initHandler() {
+        mUiHandler = new Handler() {
+            @Override
+            public void handleMessage(@NonNull Message msg) {
+                Log.i(TAG, "HandleMessage msg.what:" + msg.what);
+                updateListView();
+            }
+        };
+    }
+
+    private void updateListView() {
+        tagsListAdapter.clear();
+        for (String tag: tagsList) {
+            tagsListAdapter.add(tag);
+            tagsListAdapter.notifyDataSetChanged();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        mSyncReadRunnable.release();
+        mUiHandler.removeCallbacksAndMessages(null);
     }
 
     private SyncReadRunnable mSyncReadRunnable = new SyncReadRunnable();
@@ -63,8 +96,10 @@ public class LeituraActivity extends AppCompatActivity {
                     Log.i(">>> Tag: ", tag);
 
                     tagsList.add(tag);
-                    tagsListAdapter.add(tag);
-                    tagsListAdapter.notifyDataSetChanged();
+                    Message message = Message.obtain();
+                    message.what = 0;
+                    mUiHandler.removeMessages(message.what);
+                    mUiHandler.sendMessage(message);
                 }
             }
         }

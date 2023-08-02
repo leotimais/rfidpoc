@@ -10,6 +10,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
@@ -24,6 +25,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.honeywell.rfidservice.ConnectionState;
 import com.honeywell.rfidservice.EventListener;
 import com.honeywell.rfidservice.RfidManager;
 import com.honeywell.rfidservice.TriggerMode;
@@ -38,6 +40,7 @@ public class MainActivity extends AppCompatActivity {
 
     private ListView lvDispositivos;
     private Button btnEncontrar;
+    private Button btnCreateReader;
 
     private BluetoothAdapter bluetoothAdapter;
     private List<BluetoothDevice> dispositivoList;
@@ -104,16 +107,19 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
                 BluetoothDevice dispositivoSelecionado = dispositivoList.get(position);
-                if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.BLUETOOTH_CONNECT},2);
-                        return;
-                    }
+
+                pararBuscaDispositivosBluetooth();
+
+                if (!isConnected() || dispositivoSelecionado != getSelectedDev()) {
+                    disconnect();
+
+                    connect(dispositivoSelecionado.getAddress());
+                    setSelectedDev(dispositivoSelecionado);
+                    view.setBackgroundColor(Color.YELLOW);
+                    dispositivoListAdapter.notifyDataSetChanged();
+                    btnCreateReader.setEnabled(true);
+                    mRfidMgr.setTriggerMode(TriggerMode.RFID);
                 }
-                Toast.makeText(MainActivity.this, "Dispositivo selecionado: " + dispositivoSelecionado.getName(), Toast.LENGTH_LONG).show();
-                connect(dispositivoSelecionado.getAddress());
-                Toast.makeText(MainActivity.this, "Estado do RFID: " + mRfidMgr.getConnectionState(), Toast.LENGTH_LONG).show();
-                mRfidMgr.createReader();
             }
         });
 
@@ -135,6 +141,15 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+
+        btnCreateReader = findViewById(R.id.btn_create_reader);
+        btnCreateReader.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mRfidMgr.createReader();
+            }
+        });
+        btnCreateReader.setEnabled(false);
     }
 
     private void encontrarDispositivosBluetooth() {
@@ -148,6 +163,23 @@ public class MainActivity extends AppCompatActivity {
         bluetoothAdapter.startDiscovery();
         IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
         registerReceiver(receiver, filter);
+    }
+
+    private void pararBuscaDispositivosBluetooth() {
+        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_DENIED) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.BLUETOOTH_SCAN},2);
+                return;
+            }
+        }
+
+        bluetoothAdapter.cancelDiscovery();
+        btnEncontrar.setText("Encontrar dispositivos");
+        btnEncontrar.setEnabled(true);
+    }
+
+    private BluetoothDevice getSelectedDev() {
+        return App.getInstance().selectedBleDev;
     }
 
     private void setSelectedDev(BluetoothDevice dev) {
@@ -270,4 +302,12 @@ public class MainActivity extends AppCompatActivity {
         public void onTriggerModeSwitched(TriggerMode curMode) {
         }
     };
+
+    private ConnectionState getCnntState() {
+        return mRfidMgr.getConnectionState();
+    }
+
+    private boolean isConnected() {
+        return getCnntState() == ConnectionState.STATE_CONNECTED;
+    }
 }

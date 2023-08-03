@@ -76,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.BLUETOOTH_CONNECT},2);
+                        ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 2);
                         return;
                     }
                 }
@@ -95,8 +95,6 @@ public class MainActivity extends AppCompatActivity {
 
         mApp = (App) getApplication();
         mRfidMgr = mApp.getRfidManager();
-
-        mRfidMgr.addEventListener(mEventListener);
 
         lvDispositivos = findViewById(R.id.lv_dispositivos);
         dispositivoList = new ArrayList<>();
@@ -146,6 +144,7 @@ public class MainActivity extends AppCompatActivity {
         btnCreateReader.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                mRfidMgr.addEventListener(mEventListener);
                 mRfidMgr.createReader();
             }
         });
@@ -155,7 +154,7 @@ public class MainActivity extends AppCompatActivity {
     private void encontrarDispositivosBluetooth() {
         if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_DENIED) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.BLUETOOTH_SCAN},2);
+                ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.BLUETOOTH_SCAN}, 2);
                 return;
             }
         }
@@ -168,7 +167,7 @@ public class MainActivity extends AppCompatActivity {
     private void pararBuscaDispositivosBluetooth() {
         if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_DENIED) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.BLUETOOTH_SCAN},2);
+                ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.BLUETOOTH_SCAN}, 2);
                 return;
             }
         }
@@ -285,12 +284,21 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onReaderCreated(boolean success, RfidReader reader) {
             if (success) {
-                Log.i("MainActivity", "onReaderCreated: " + success);
+                Log.i(TAG, "onReaderCreated: " + success);
                 mApp.rfidReader = reader;
-                Intent intent = new Intent(MainActivity.this, LeituraActivity.class);
+
+                if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 2);
+                        return;
+                    }
+                }
+
+                Intent intent = new Intent(MainActivity.this, DispositivoActivity.class);
+                intent.putExtra("dispositivo", getSelectedDev().getName());
                 startActivity(intent);
             } else {
-                Log.i("MainActivity", "onReaderCreated: " + success);
+                Log.i(TAG, "onReaderCreated: " + success);
             }
         }
 

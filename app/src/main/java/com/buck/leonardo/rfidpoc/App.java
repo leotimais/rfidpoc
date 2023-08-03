@@ -11,6 +11,7 @@ import com.honeywell.rfidservice.TriggerMode;
 import com.honeywell.rfidservice.rfid.RfidReader;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,8 @@ public class App extends Application {
     public Map<String, Integer> bleScanDevicesRssi = new HashMap<>();
     public BluetoothDevice selectedBleDev;
 
+    public List<Map<String, ?>> ListMs = Collections.synchronizedList(new ArrayList<Map<String, ?>>());
+
     public float batteryTemperature = 0;
 
     private static App mInstance;
@@ -36,9 +39,7 @@ public class App extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-
         mInstance = this;
-
         rfidMgr = RfidManager.getInstance(this);
 
         Log.i(TAG, "App onCreate");

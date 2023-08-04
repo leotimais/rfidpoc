@@ -9,11 +9,13 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 public class DispositivoActivity extends AppCompatActivity {
 
     private TextView tvDispositivo;
     private Button btnVincular;
+    private Button btnConsultar;
 
     private final String TAG = "DispositivoActivity";
 
@@ -23,10 +25,10 @@ public class DispositivoActivity extends AppCompatActivity {
         setContentView(R.layout.activity_dispositivo);
 
         setTitle("Dispositivo conectado");
-        ActionBar actionBar = getSupportActionBar();
-        if (actionBar != null) {
-            actionBar.setDisplayHomeAsUpEnabled(true);
-        }
+//        ActionBar actionBar = getSupportActionBar();
+//        if (actionBar != null) {
+//            actionBar.setDisplayHomeAsUpEnabled(true);
+//        }
 
         tvDispositivo = findViewById(R.id.tv_dispositivo);
         btnVincular = findViewById(R.id.btn_vincular);
@@ -35,6 +37,14 @@ public class DispositivoActivity extends AppCompatActivity {
             public void onClick(View view) {
                 Intent intent = new Intent(DispositivoActivity.this, LeituraActivity.class);
                 startActivity(intent);
+            }
+        });
+
+        btnConsultar = findViewById(R.id.btn_consultar);
+        btnConsultar.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Toast.makeText(DispositivoActivity.this, "Função não implementada", Toast.LENGTH_SHORT).show();
             }
         });
 

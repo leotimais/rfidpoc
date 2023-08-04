@@ -93,6 +93,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        setTitle("Busca de dispositivos");
+
         mApp = (App) getApplication();
         mRfidMgr = mApp.getRfidManager();
 

@@ -6,10 +6,8 @@ import android.os.HandlerThread;
 import android.os.Message;
 import android.util.Log;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -33,18 +31,20 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
 public class LeituraActivity extends AppCompatActivity {
 
-    private ListView tagsListView;
     private Button btnLeituraCodBarras;
     private Button btnLeituraTags;
+    private Button btnAssociar;
+    private TextView tvCodigoBarras;
+    private TextView tvTagRfid;
 
     private App mApp;
-    private List<String> tagsList;
-    private ArrayAdapter<String> tagsListAdapter;
+    private List<String> tagsList = new ArrayList<>();;
     private Handler mUiHandler;
     private HandlerThread mReadHandlerThread = new HandlerThread("ReadHandler");
     private Handler mReadHandler;
@@ -53,14 +53,17 @@ public class LeituraActivity extends AppCompatActivity {
 
     private TagReadOption mTagReadOption = new TagReadOption();
 
-    private String codigoBarras;
-
     private static final String TAG = "LeituraActivity";
+
+    private static final int MSG_UPDATE_UI_TEXTO_TAG = 0;
+    private static final int MSG_UPDATE_UI_BOTAO_ASSOCIAR = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_leitura);
+
+        setTitle("Associação de RFID");
 
         btnLeituraTags = findViewById(R.id.btn_leitura_tags);
         btnLeituraTags.setOnClickListener(new View.OnClickListener() {
@@ -80,24 +83,32 @@ public class LeituraActivity extends AppCompatActivity {
             }
         });
 
-        btnLeituraTags.setEnabled(false);
-
-        tagsListView = findViewById(R.id.lv_tags);
-        tagsList = new ArrayList<>();
-        tagsListAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1);
-        tagsListView.setAdapter(tagsListAdapter);
-        tagsListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        btnAssociar = findViewById(R.id.btn_associar);
+        btnAssociar.setEnabled(false);
+        btnAssociar.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
+            public void onClick(View view) {
                 RequestQueue queue = Volley.newRequestQueue(LeituraActivity.this);
-                String url = "http://aa1b-191-13-138-182.ngrok-free.app/api/leitura";
-
-                String tag = tagsList.get(position);
+                String url = "http://b568-191-13-138-182.ngrok-free.app/api/leitura";
 
                 JSONObject body = new JSONObject();
+
+                String codEmpresa = "01";
+                String user = "admlog";
+
+                String tagRfid = tvTagRfid.getText().toString();
+
+                String[] codigoBarras = tvCodigoBarras.getText().toString().split("\\|");
+                int ordemProd = Integer.parseInt(codigoBarras[0]);
+                int ordemSeq = Integer.parseInt(codigoBarras[1]);
+
+
                 try {
-                    body.put("codBarraOrigem", codigoBarras);
-                    body.put("tag", tag);
+                    body.put("codEmpresa", codEmpresa);
+                    body.put("tagRfid", tagRfid);
+                    body.put("ordemProd", ordemProd);
+                    body.put("ordemSeq", ordemSeq);
+                    body.put("user", user);
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
@@ -105,13 +116,17 @@ public class LeituraActivity extends AppCompatActivity {
                 JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, url, body, new Response.Listener<JSONObject>() {
                     @Override
                     public void onResponse(JSONObject response) {
-                        Toast.makeText(LeituraActivity.this, ">>> Response: " + response.toString(), Toast.LENGTH_LONG).show();
+                        try {
+                            Toast.makeText(LeituraActivity.this, response.getString("mensagem"), Toast.LENGTH_SHORT).show();
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
                         Log.i(TAG, ">>> Response: " + response.toString());
                     }
                 }, new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        Toast.makeText(LeituraActivity.this, ">>> Response: " + error.toString(), Toast.LENGTH_LONG).show();
+                        Toast.makeText(LeituraActivity.this, error.toString(), Toast.LENGTH_LONG).show();
                         Log.i(TAG, ">>> Response: " + error.toString());
                     }
                 });
@@ -119,6 +134,12 @@ public class LeituraActivity extends AppCompatActivity {
                 queue.add(request);
             }
         });
+
+        tvCodigoBarras = findViewById(R.id.tv_cod_barras);
+        tvCodigoBarras.setText("");
+
+        tvTagRfid = findViewById(R.id.tv_tag_rfid);
+        tvTagRfid.setText("");
 
         mApp = App.getInstance();
 
@@ -130,7 +151,17 @@ public class LeituraActivity extends AppCompatActivity {
             @Override
             public void handleMessage(@NonNull Message msg) {
                 Log.i(TAG, "HandleMessage msg.what:" + msg.what);
-                updateListView();
+
+                switch (msg.what) {
+                    case MSG_UPDATE_UI_TEXTO_TAG:
+                        selecionaTagLida();
+                        break;
+                    case MSG_UPDATE_UI_BOTAO_ASSOCIAR:
+                        habilitaDesabilitaAssociar();
+                        break;
+                    default:
+                        break;
+                }
             }
         };
 
@@ -141,12 +172,40 @@ public class LeituraActivity extends AppCompatActivity {
 //        mReadHandler = new Handler(mReadHandlerThread.getLooper());
     }
 
-    private void updateListView() {
-        tagsListAdapter.clear();
-        for (String tag: tagsList) {
-            tagsListAdapter.add(tag);
-            tagsListAdapter.notifyDataSetChanged();
+    private void habilitaDesabilitaAssociar() {
+        String codBarras = tvCodigoBarras.getText().toString();
+        String tagRfid = tvTagRfid.getText().toString();
+        boolean codBarrasLido = true;
+        boolean tagRfidLida = true;
+
+        if (codBarras == null || codBarras.trim().isEmpty())
+            codBarrasLido = false;
+        if (tagRfid == null || tagRfid.trim().isEmpty())
+            tagRfidLida = false;
+
+        if (codBarrasLido && tagRfidLida)
+            btnAssociar.setEnabled(true);
+        else
+            btnAssociar.setEnabled(false);
+
+    }
+
+    private void selecionaTagLida() {
+        HashSet<String> removeDuplicados = new HashSet<>(tagsList);
+        List<String> tags = new ArrayList<>(removeDuplicados);
+
+        if (tags.size() > 1) {
+            Toast.makeText(this, "Mais de uma TAG RFID lida, realize nova leitura", Toast.LENGTH_SHORT).show();
+            return;
         }
+
+        String tag = tags.get(0);
+        tvTagRfid.setText(tag);
+
+        Message message = Message.obtain();
+        message.what = MSG_UPDATE_UI_BOTAO_ASSOCIAR;
+        mUiHandler.removeMessages(message.what);
+        mUiHandler.sendMessage(message);
     }
 
     @Override
@@ -200,7 +259,7 @@ public class LeituraActivity extends AppCompatActivity {
 
                     tagsList.add(tag);
                     Message message = Message.obtain();
-                    message.what = 0;
+                    message.what = MSG_UPDATE_UI_TEXTO_TAG;
                     mUiHandler.removeMessages(message.what);
                     mUiHandler.sendMessage(message);
                 }
@@ -217,9 +276,13 @@ public class LeituraActivity extends AppCompatActivity {
         if(result.getContents() == null) {
             Toast.makeText(LeituraActivity.this, "Cancelled", Toast.LENGTH_LONG).show();
         } else {
-            codigoBarras = result.getContents();
-            Toast.makeText(LeituraActivity.this, "Código de barras lido: " + codigoBarras, Toast.LENGTH_SHORT).show();
-            btnLeituraTags.setEnabled(true);
+            String codigoBarras = result.getContents();
+            tvCodigoBarras.setText(codigoBarras);
+
+            Message message = Message.obtain();
+            message.what = MSG_UPDATE_UI_BOTAO_ASSOCIAR;
+            mUiHandler.removeMessages(message.what);
+            mUiHandler.sendMessage(message);
         }
     });
 

@@ -19,6 +19,8 @@ import java.util.Map;
 public class App extends Application {
     private static final String TAG = "App";
 
+    public static final String API_URL = "http://26e4-201-148-119-161.ngrok-free.app/api";
+
     public RfidReader rfidReader;
 
     public List<BluetoothDevice> bleScanDevices = new ArrayList<>();

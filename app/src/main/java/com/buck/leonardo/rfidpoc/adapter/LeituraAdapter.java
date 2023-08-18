@@ -32,8 +32,8 @@ public class LeituraAdapter extends RecyclerView.Adapter<LeituraAdapter.ViewHold
     public void onBindViewHolder(@NonNull LeituraAdapter.ViewHolder holder, int position) {
         LeituraEtiqueta leitura = lista.get(position);
 
-        holder.tvIdEtiqueta.setText(String.valueOf(leitura.getIdEtiqueta()));
-        holder.tvDataLeitura.setText(leitura.getDataLeitura());
+        holder.tvIdEtiqueta.setText(String.valueOf(leitura.getId()));
+        holder.tvDataLeitura.setText(leitura.getDataHoraLeitura());
         holder.tvTagRfid.setText(leitura.getTagRfid());
         holder.tvOpSeq.setText(leitura.getOpSeq());
     }

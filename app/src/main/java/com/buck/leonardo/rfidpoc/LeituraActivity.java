@@ -1,7 +1,9 @@
 package com.buck.leonardo.rfidpoc;
 
-import android.app.AlertDialog;
-import android.content.DialogInterface;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -11,10 +13,8 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.activity.result.ActivityResultLauncher;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.DividerItemDecoration;
@@ -33,8 +33,6 @@ import com.buck.leonardo.rfidpoc.model.LeituraEtiqueta;
 import com.honeywell.rfidservice.rfid.RfidReader;
 import com.honeywell.rfidservice.rfid.TagReadData;
 import com.honeywell.rfidservice.rfid.TagReadOption;
-import com.journeyapps.barcodescanner.ScanContract;
-import com.journeyapps.barcodescanner.ScanOptions;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -47,13 +45,10 @@ import java.util.Map;
 
 public class LeituraActivity extends AppCompatActivity {
 
-    private Button btnLeituraCodBarras;
-    private Button btnLeituraTags;
-    private Button btnAssociar;
-    private TextView tvCodigoBarras;
-    private TextView tvTagRfid;
+    private EditText etEtiqRfid;
     private EditText etCodigoBarras;
-    private EditText etTagRfid;
+    private Button btnLerRfid;
+    private Button btnAssociar;
     private RecyclerView rvLeituras;
     private RecyclerView.LayoutManager rvLayoutManager;
     private LeituraAdapter leituraAdapter;
@@ -76,6 +71,37 @@ public class LeituraActivity extends AppCompatActivity {
     private static final int MSG_UPDATE_UI_TEXTO_TAG = 0;
     private static final int MSG_UPDATE_UI_BOTAO_ASSOCIAR = 1;
 
+    private static final String ACTION_BARCODE_DATA = "com.honeywell.sample.action.BARCODE_DATA";
+    private static final String ACTION_CLAIM_SCANNER = "com.honeywell.aidc.action.ACTION_CLAIM_SCANNER";
+    private static final String ACTION_RELEASE_SCANNER = "com.honeywell.aidc.action.ACTION_RELEASE_SCANNER";
+    private static final String EXTRA_SCANNER = "com.honeywell.aidc.extra.EXTRA_SCANNER";
+    private static final String EXTRA_PROFILE = "com.honeywell.aidc.extra.EXTRA_PROFILE";
+    private static final String EXTRA_PROPERTIES = "com.honeywell.aidc.extra.EXTRA_PROPERTIES";
+
+    private BroadcastReceiver barcodeDataReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (ACTION_BARCODE_DATA.equals(intent.getAction())) {
+                int version = intent.getIntExtra("version", 0);
+                if (version >= 1) {
+                    String data = intent.getStringExtra("data");
+                    setCodigoDeBarras(data);
+                }
+            }
+        }
+    };
+
+    private void setCodigoDeBarras(final String text) {
+        if (etCodigoBarras != null) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    etCodigoBarras.setText(text);
+                }
+            });
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -83,8 +109,12 @@ public class LeituraActivity extends AppCompatActivity {
 
         setTitle("Associação de RFID");
 
-        btnLeituraTags = findViewById(R.id.btn_leitura_tags);
-        btnLeituraTags.setOnClickListener(new View.OnClickListener() {
+        etEtiqRfid = (EditText) findViewById(R.id.et_leitura_etiqrfid);
+        etCodigoBarras = (EditText) findViewById(R.id.et_leitura_codbarras);
+        btnLerRfid = (Button) findViewById(R.id.btn_lerrfid);
+        btnAssociar = (Button) findViewById(R.id.btn_associar);
+
+        btnLerRfid.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
 //                comecarLeitura();
@@ -93,87 +123,16 @@ public class LeituraActivity extends AppCompatActivity {
             }
         });
 
-        btnLeituraCodBarras = findViewById(R.id.btn_leitura_cod_barras);
-        btnLeituraCodBarras.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                iniciarLeituraCodigoBarras();
-            }
-        });
-
-        btnAssociar = findViewById(R.id.btn_associar);
         btnAssociar.setEnabled(false);
         btnAssociar.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                String tagRfid = etTagRfid.getText().toString();
-                String codigoBarras = etCodigoBarras.getText().toString();
-
-                int idEtiqueta = leituras.size() + 1;
-
-                LeituraEtiqueta leitura = new LeituraEtiqueta(idEtiqueta, "17/08/2023", tagRfid, codigoBarras);
-                leituras.add(leitura);
-
-                leituraAdapter.notifyDataSetChanged();
-
-                etCodigoBarras.setText("");
-                etTagRfid.setText("");
-                habilitaDesabilitaAssociar();
-
-//                RequestQueue queue = Volley.newRequestQueue(LeituraActivity.this);
-//                String url = mApp.API_URL + "/leitura";
-//
-//                JSONObject body = new JSONObject();
-//
-//                String codEmpresa = "01";
-//                String user = "admlog";
-//
-//                String tagRfid = etTagRfid.getText().toString();
-//
-//                String[] codigoBarras = etCodigoBarras.getText().toString().split("\\|");
-//                int ordemProd = Integer.parseInt(codigoBarras[0]);
-//                int ordemSeq = Integer.parseInt(codigoBarras[1]);
-//
-//                try {
-//                    body.put("codEmpresa", codEmpresa);
-//                    body.put("tagRfid", tagRfid);
-//                    body.put("ordemProd", ordemProd);
-//                    body.put("ordemSeq", ordemSeq);
-//                    body.put("user", user);
-//                } catch (JSONException e) {
-//                    e.printStackTrace();
-//                }
-//
-//                JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, url, body, new Response.Listener<JSONObject>() {
-//                    @Override
-//                    public void onResponse(JSONObject response) {
-//                        try {
-//                            Toast.makeText(LeituraActivity.this, response.getString("mensagem"), Toast.LENGTH_SHORT).show();
-//                        } catch (JSONException e) {
-//                            e.printStackTrace();
-//                        }
-//                        Log.i(TAG, ">>> Response: " + response.toString());
-//                    }
-//                }, new Response.ErrorListener() {
-//                    @Override
-//                    public void onErrorResponse(VolleyError error) {
-//                        Toast.makeText(LeituraActivity.this, error.toString(), Toast.LENGTH_LONG).show();
-//                        Log.i(TAG, ">>> Response: " + error.toString());
-//                    }
-//                });
-//
-//                queue.add(request);
+                validarLeitura();
             }
         });
 
-        tvCodigoBarras = findViewById(R.id.tv_codbarras);
-        tvTagRfid = findViewById(R.id.tv_lbl_tagrfid);
-
-        etCodigoBarras = findViewById(R.id.et_codbarras);
-        etTagRfid = findViewById(R.id.et_tagrfid);
-
         etCodigoBarras.setEnabled(false);
-        etTagRfid.setEnabled(false);
+        etEtiqRfid.setEnabled(false);
 
         rvLeituras = findViewById(R.id.rv_leituras);
         rvLayoutManager = new LinearLayoutManager(this);
@@ -182,21 +141,6 @@ public class LeituraActivity extends AppCompatActivity {
         rvLeituras.addItemDecoration(new DividerItemDecoration(this, LinearLayout.VERTICAL));
 
         listarLeituras();
-
-//        rvLeituras.addOnItemTouchListener(new RecyclerItemClickListener(getApplicationContext(),
-//                rvLeituras,
-//                new RecyclerItemClickListener.OnItemClickListener() {
-//                    @Override
-//                    public void onItemClick(View view, int position) {
-//                        posicaoSelecionada = position;
-//                        excluir();
-//                    }
-//
-//                    @Override
-//                    public void onLongItemClick(View view, int position) {
-//
-//                    }
-//                }));
 
         ItemTouchHelper.SimpleCallback simpleItemTouchCallback = new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.RIGHT) {
             @Override
@@ -220,6 +164,35 @@ public class LeituraActivity extends AppCompatActivity {
         mApp = App.getInstance();
 
         initHandler();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        registerReceiver(barcodeDataReceiver, new IntentFilter(ACTION_BARCODE_DATA));
+        claimScanner();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterReceiver(barcodeDataReceiver);
+        releaseScanner();
+    }
+
+    private void claimScanner() {
+        Bundle properties = new Bundle();
+        properties.putBoolean("DPR_DATA_INTENT", true);
+        properties.putString("DPR_DATA_INTENT_ACTION", ACTION_BARCODE_DATA);
+        sendBroadcast(new Intent(ACTION_CLAIM_SCANNER)
+                .putExtra(EXTRA_SCANNER, "dcs.scanner.imager")
+                .putExtra(EXTRA_PROFILE, "MyProfile1")
+                .putExtra(EXTRA_PROPERTIES, properties)
+        );
+    }
+
+    private void releaseScanner() {
+        sendBroadcast(new Intent(ACTION_RELEASE_SCANNER));
     }
 
     private void initHandler() {
@@ -250,7 +223,7 @@ public class LeituraActivity extends AppCompatActivity {
 
     private void habilitaDesabilitaAssociar() {
         String codBarras = etCodigoBarras.getText().toString();
-        String tagRfid = etTagRfid.getText().toString();
+        String tagRfid = etEtiqRfid.getText().toString();
         boolean codBarrasLido = true;
         boolean tagRfidLida = true;
 
@@ -263,7 +236,6 @@ public class LeituraActivity extends AppCompatActivity {
             btnAssociar.setEnabled(true);
         else
             btnAssociar.setEnabled(false);
-
     }
 
     private void selecionaTagLida() {
@@ -276,7 +248,7 @@ public class LeituraActivity extends AppCompatActivity {
         }
 
         String tag = tags.get(0);
-        etTagRfid.setText(tag);
+        etEtiqRfid.setText(tag);
 
         Message message = Message.obtain();
         message.what = MSG_UPDATE_UI_BOTAO_ASSOCIAR;
@@ -347,28 +319,60 @@ public class LeituraActivity extends AppCompatActivity {
         return mApp.rfidReader;
     }
 
-    private final ActivityResultLauncher<ScanOptions> barcodeLauncher = registerForActivityResult(new ScanContract(),
-    result -> {
-        if(result.getContents() == null) {
-            Toast.makeText(LeituraActivity.this, "Cancelled", Toast.LENGTH_LONG).show();
-        } else {
-            String codigoBarras = result.getContents();
-            etCodigoBarras.setText(codigoBarras);
+    private void validarLeitura() {
+        String etiqRfid = etEtiqRfid.getText().toString();
+        String codigoBarras = etCodigoBarras.getText().toString();
 
-            Message message = Message.obtain();
-            message.what = MSG_UPDATE_UI_BOTAO_ASSOCIAR;
-            mUiHandler.removeMessages(message.what);
-            mUiHandler.sendMessage(message);
+//        int idEtiqueta = leituras.size() + 1;
+//        LeituraEtiqueta leitura = new LeituraEtiqueta(idEtiqueta, "17/08/2023", etiqRfid, codigoBarras);
+//        leituras.add(leitura);
+//        leituraAdapter.notifyDataSetChanged();
+
+        etCodigoBarras.setText("");
+        etEtiqRfid.setText("");
+        habilitaDesabilitaAssociar();
+
+        RequestQueue queue = Volley.newRequestQueue(LeituraActivity.this);
+        String url = mApp.API_URL + "/leitura";
+
+        JSONObject body = new JSONObject();
+
+        String codEmpresa = "01";
+        String user = "admlog";
+
+        String[] codigoBarrasSplit = codigoBarras.split("\\|");
+        int ordemProd = Integer.parseInt(codigoBarrasSplit[0]);
+        int ordemSeq = Integer.parseInt(codigoBarrasSplit[1]);
+
+        try {
+            body.put("codEmpresa", codEmpresa);
+            body.put("tagRfid", etiqRfid);
+            body.put("ordemProd", ordemProd);
+            body.put("ordemSeq", ordemSeq);
+            body.put("user", user);
+        } catch (JSONException e) {
+            e.printStackTrace();
         }
-    });
 
-    private void iniciarLeituraCodigoBarras() {
-        ScanOptions options = new ScanOptions();
-        options.setDesiredBarcodeFormats(ScanOptions.ALL_CODE_TYPES);
-        options.setCameraId(0);  // Use a specific camera of the device
-        options.setBeepEnabled(true);
-        options.setBarcodeImageEnabled(true);
-        barcodeLauncher.launch(options);
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, url, body, new Response.Listener<JSONObject>() {
+            @Override
+            public void onResponse(JSONObject response) {
+                try {
+                    Toast.makeText(LeituraActivity.this, response.getString("mensagem"), Toast.LENGTH_SHORT).show();
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+                Log.i(TAG, ">>> Response: " + response.toString());
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Toast.makeText(LeituraActivity.this, error.toString(), Toast.LENGTH_LONG).show();
+                Log.i(TAG, ">>> Response: " + error.toString());
+            }
+        });
+
+        queue.add(request);
     }
 
     private void listarLeituras() {
@@ -409,34 +413,5 @@ public class LeituraActivity extends AppCompatActivity {
 
         leituraAdapter = new LeituraAdapter(leituras);
         rvLeituras.setAdapter(leituraAdapter);
-    }
-
-    private void excluir() {
-        LeituraEtiqueta leitura = leituras.get(posicaoSelecionada);
-
-        DialogInterface.OnClickListener listener = (dialog, which) -> {
-            switch (which) {
-                case DialogInterface.BUTTON_POSITIVE:
-                    leituras.remove(leitura);
-                    leituraAdapter.notifyDataSetChanged();
-                    break;
-
-                case DialogInterface.BUTTON_NEGATIVE:
-                    break;
-            }
-        };
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-
-        builder.setTitle("Excluir leitura");
-        builder.setIcon(android.R.drawable.ic_dialog_alert);
-
-        builder.setMessage("Deseja excluir a leitura?");
-
-        builder.setPositiveButton("Sim", listener);
-        builder.setNegativeButton("Não", listener);
-
-        AlertDialog alert = builder.create();
-        alert.show();
     }
 }

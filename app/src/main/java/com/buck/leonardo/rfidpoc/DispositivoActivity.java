@@ -44,7 +44,8 @@ public class DispositivoActivity extends AppCompatActivity {
         btnConsultar.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Toast.makeText(DispositivoActivity.this, "Função não implementada", Toast.LENGTH_SHORT).show();
+                Intent intent = new Intent(DispositivoActivity.this, ConferenciaActivity.class);
+                startActivity(intent);
             }
         });
 

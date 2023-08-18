@@ -2,32 +2,32 @@ package com.buck.leonardo.rfidpoc.model;
 
 public class LeituraEtiqueta {
 
-    private int idEtiqueta;
-    private String dataLeitura;
+    private int id;
+    private String dataHoraLeitura;
     private String tagRfid;
     private String opSeq;
 
-    public LeituraEtiqueta(int idEtiqueta, String dataLeitura, String tagRfid, String opSeq) {
-        this.idEtiqueta = idEtiqueta;
-        this.dataLeitura = dataLeitura;
+    public LeituraEtiqueta(int id, String dataHoraLeitura, String tagRfid, String opSeq) {
+        this.id = id;
+        this.dataHoraLeitura = dataHoraLeitura;
         this.tagRfid = tagRfid;
         this.opSeq = opSeq;
     }
 
-    public int getIdEtiqueta() {
-        return idEtiqueta;
+    public int getId() {
+        return id;
     }
 
-    public void setIdEtiqueta(int idEtiqueta) {
-        this.idEtiqueta = idEtiqueta;
+    public void setId(int id) {
+        this.id = id;
     }
 
-    public String getDataLeitura() {
-        return dataLeitura;
+    public String getDataHoraLeitura() {
+        return dataHoraLeitura;
     }
 
-    public void setDataLeitura(String dataLeitura) {
-        this.dataLeitura = dataLeitura;
+    public void setDataHoraLeitura(String dataHoraLeitura) {
+        this.dataHoraLeitura = dataHoraLeitura;
     }
 
     public String getTagRfid() {

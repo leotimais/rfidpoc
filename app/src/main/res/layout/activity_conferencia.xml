@@ -2,13 +2,12 @@
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/constraintLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".LeituraActivity">
+    tools:context=".ConferenciaActivity">
 
     <TextView
-        android:id="@+id/tv_leitura_1"
+        android:id="@+id/tv_conf_1"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
@@ -16,63 +15,53 @@
         android:layout_marginEnd="8dp"
         android:text="Código de Barras da OP"
         android:textSize="14sp"
-        app:layout_constraintBottom_toTopOf="@+id/et_leitura_codbarras"
+        app:layout_constraintBottom_toTopOf="@+id/et_codbarras"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <Button
-        android:id="@+id/btn_lerrfid"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"
-        android:text="Ler Etiqueta RFID"
-        app:layout_constraintBottom_toTopOf="@+id/btn_associar"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/et_leitura_etiqrfid" />
-
     <TextView
-        android:id="@+id/tv_leitura_2"
+        android:id="@+id/tv_conf_2"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
         android:layout_marginTop="16dp"
         android:layout_marginEnd="8dp"
-        android:text="TAG RFID"
+        android:text="Etiqueta RFID"
         android:textSize="14sp"
-        app:layout_constraintBottom_toTopOf="@+id/et_leitura_etiqrfid"
+        app:layout_constraintBottom_toTopOf="@+id/et_etiqrfid"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/et_leitura_codbarras" />
+        app:layout_constraintTop_toBottomOf="@+id/et_codbarras" />
 
-    <Button
-        android:id="@+id/btn_associar"
-        android:layout_width="0dp"
+    <TextView
+        android:id="@+id/tv_conf_3"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
+        android:layout_marginTop="16dp"
         android:layout_marginEnd="8dp"
-        android:text="Associar"
+        android:text="OP / Sequência a Devolver"
+        app:layout_constraintBottom_toTopOf="@+id/et_opseqdev"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/btn_lerrfid" />
+        app:layout_constraintTop_toBottomOf="@+id/et_etiqrfid" />
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rv_leituras"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
+    <TextView
+        android:id="@+id/tv_conf_4"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="16dp"
         android:layout_marginEnd="8dp"
-        android:layout_marginBottom="8dp"
-        app:layout_constraintBottom_toBottomOf="parent"
+        android:text="Código do Item"
+        app:layout_constraintBottom_toTopOf="@+id/et_coditem"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/btn_associar" />
+        app:layout_constraintTop_toBottomOf="@+id/et_opseqdev" />
 
     <EditText
-        android:id="@+id/et_leitura_codbarras"
+        android:id="@+id/et_codbarras"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
@@ -82,24 +71,59 @@
         android:hint="Leia o código de barras da OP"
         android:inputType="textPersonName"
         android:minHeight="48dp"
+        app:layout_constraintBottom_toTopOf="@+id/tv_conf_2"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tv_leitura_1" />
+        app:layout_constraintTop_toBottomOf="@+id/tv_conf_1" />
 
     <EditText
-        android:id="@+id/et_leitura_etiqrfid"
+        android:id="@+id/et_etiqrfid"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
         android:layout_marginTop="8dp"
         android:layout_marginEnd="8dp"
         android:ems="10"
-        android:hint="Leia a TAG RFID"
+        android:hint="Leia a Etiqueta RFID"
         android:inputType="textPersonName"
         android:minHeight="48dp"
-        app:layout_constraintBottom_toTopOf="@+id/btn_lerrfid"
+        app:layout_constraintBottom_toTopOf="@+id/tv_conf_3"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_conf_2" />
+
+    <EditText
+        android:id="@+id/et_opseqdev"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:ems="10"
+        android:hint="OP / Sequência a Devolver"
+        android:inputType="textPersonName"
+        android:minHeight="48dp"
+        app:layout_constraintBottom_toTopOf="@+id/tv_conf_4"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tv_leitura_2" />
+        app:layout_constraintTop_toBottomOf="@+id/tv_conf_3" />
+
+    <EditText
+        android:id="@+id/et_coditem"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="379dp"
+        android:ems="10"
+        android:hint="Código do Item"
+        android:inputType="textPersonName"
+        android:minHeight="48dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_conf_4" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

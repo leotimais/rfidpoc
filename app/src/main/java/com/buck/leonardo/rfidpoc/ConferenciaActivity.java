@@ -8,7 +8,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
 import android.widget.EditText;
-import android.widget.TextView;
 
 public class ConferenciaActivity extends AppCompatActivity {
     private EditText etEtiqRfid;
@@ -54,10 +53,10 @@ public class ConferenciaActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_conferencia);
-        etEtiqRfid = (EditText) findViewById(R.id.et_etiqrfid);
-        etOpSeqDev = (EditText) findViewById(R.id.et_opseqdev);
-        etCodItem = (EditText) findViewById(R.id.et_coditem);
-        etCodigoBarras = (EditText) findViewById(R.id.et_codbarras);
+        etEtiqRfid = (EditText) findViewById(R.id.et_conf_etiqrfid);
+        etOpSeqDev = (EditText) findViewById(R.id.et_conf_opseqdev);
+        etCodItem = (EditText) findViewById(R.id.et_conf_coditem);
+        etCodigoBarras = (EditText) findViewById(R.id.et_conf_codbarras);
     }
 
     @Override

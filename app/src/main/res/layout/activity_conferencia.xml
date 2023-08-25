@@ -15,7 +15,7 @@
         android:layout_marginEnd="8dp"
         android:text="Código de Barras da OP"
         android:textSize="14sp"
-        app:layout_constraintBottom_toTopOf="@+id/et_codbarras"
+        app:layout_constraintBottom_toTopOf="@+id/et_conf_codbarras"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -29,10 +29,10 @@
         android:layout_marginEnd="8dp"
         android:text="Etiqueta RFID"
         android:textSize="14sp"
-        app:layout_constraintBottom_toTopOf="@+id/et_etiqrfid"
+        app:layout_constraintBottom_toTopOf="@+id/et_conf_etiqrfid"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/et_codbarras" />
+        app:layout_constraintTop_toBottomOf="@+id/et_conf_codbarras" />
 
     <TextView
         android:id="@+id/tv_conf_3"
@@ -42,10 +42,10 @@
         android:layout_marginTop="16dp"
         android:layout_marginEnd="8dp"
         android:text="OP / Sequência a Devolver"
-        app:layout_constraintBottom_toTopOf="@+id/et_opseqdev"
+        app:layout_constraintBottom_toTopOf="@+id/et_conf_opseqdev"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/et_etiqrfid" />
+        app:layout_constraintTop_toBottomOf="@+id/et_conf_etiqrfid" />
 
     <TextView
         android:id="@+id/tv_conf_4"
@@ -55,13 +55,27 @@
         android:layout_marginTop="16dp"
         android:layout_marginEnd="8dp"
         android:text="Código do Item"
-        app:layout_constraintBottom_toTopOf="@+id/et_coditem"
+        app:layout_constraintBottom_toTopOf="@+id/et_conf_coditem"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/et_opseqdev" />
+        app:layout_constraintTop_toBottomOf="@+id/et_conf_opseqdev" />
+
+    <TextView
+        android:id="@+id/tv_conf_titulorv"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:text="Etiquetas Lidas"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/rv_conf_etiqlidas"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/et_conf_coditem" />
 
     <EditText
-        android:id="@+id/et_codbarras"
+        android:id="@+id/et_conf_codbarras"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
@@ -77,7 +91,7 @@
         app:layout_constraintTop_toBottomOf="@+id/tv_conf_1" />
 
     <EditText
-        android:id="@+id/et_etiqrfid"
+        android:id="@+id/et_conf_etiqrfid"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
@@ -94,7 +108,7 @@
         app:layout_constraintTop_toBottomOf="@+id/tv_conf_2" />
 
     <EditText
-        android:id="@+id/et_opseqdev"
+        android:id="@+id/et_conf_opseqdev"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
@@ -110,20 +124,31 @@
         app:layout_constraintTop_toBottomOf="@+id/tv_conf_3" />
 
     <EditText
-        android:id="@+id/et_coditem"
+        android:id="@+id/et_conf_coditem"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
         android:layout_marginTop="8dp"
         android:layout_marginEnd="8dp"
-        android:layout_marginBottom="379dp"
         android:ems="10"
         android:hint="Código do Item"
         android:inputType="textPersonName"
         android:minHeight="48dp"
-        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/tv_conf_4" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_conf_etiqlidas"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_conf_titulorv" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

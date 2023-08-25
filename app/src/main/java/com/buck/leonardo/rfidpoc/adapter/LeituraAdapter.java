@@ -11,6 +11,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.buck.leonardo.rfidpoc.R;
 import com.buck.leonardo.rfidpoc.model.LeituraEtiqueta;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.List;
 
 public class LeituraAdapter extends RecyclerView.Adapter<LeituraAdapter.ViewHolder> {
@@ -32,10 +34,19 @@ public class LeituraAdapter extends RecyclerView.Adapter<LeituraAdapter.ViewHold
     public void onBindViewHolder(@NonNull LeituraAdapter.ViewHolder holder, int position) {
         LeituraEtiqueta leitura = lista.get(position);
 
+        String data = "";
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+        SimpleDateFormat format = new SimpleDateFormat("dd/MM/yyyy");
+        try {
+            data = format.format(dateFormat.parse(leitura.getDataHoraLeitura()));
+        } catch (ParseException e) {
+            throw new RuntimeException(e);
+        }
+
         holder.tvIdEtiqueta.setText(String.valueOf(leitura.getId()));
-        holder.tvDataLeitura.setText(leitura.getDataHoraLeitura());
-        holder.tvTagRfid.setText(leitura.getTagRfid());
-        holder.tvOpSeq.setText(leitura.getOpSeq());
+        holder.tvDataLeitura.setText(data);
+        holder.tvTagRfid.setText(leitura.getEtiqRfid());
+        holder.tvOpSeq.setText(leitura.getOp()+"/"+leitura.getSeq());
     }
 
     @Override

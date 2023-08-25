@@ -22,10 +22,12 @@ import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 import com.buck.leonardo.rfidpoc.adapter.LeituraAdapter;
@@ -34,6 +36,7 @@ import com.honeywell.rfidservice.rfid.RfidReader;
 import com.honeywell.rfidservice.rfid.TagReadData;
 import com.honeywell.rfidservice.rfid.TagReadOption;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -323,22 +326,17 @@ public class LeituraActivity extends AppCompatActivity {
         String etiqRfid = etEtiqRfid.getText().toString();
         String codigoBarras = etCodigoBarras.getText().toString();
 
-//        int idEtiqueta = leituras.size() + 1;
-//        LeituraEtiqueta leitura = new LeituraEtiqueta(idEtiqueta, "17/08/2023", etiqRfid, codigoBarras);
-//        leituras.add(leitura);
-//        leituraAdapter.notifyDataSetChanged();
-
-        etCodigoBarras.setText("");
-        etEtiqRfid.setText("");
+//        etCodigoBarras.setText("");
+//        etEtiqRfid.setText("");
         habilitaDesabilitaAssociar();
 
         RequestQueue queue = Volley.newRequestQueue(LeituraActivity.this);
-        String url = mApp.API_URL + "/leitura";
+        String url = mApp.API_URL + "/leitura/validar";
 
         JSONObject body = new JSONObject();
 
         String codEmpresa = "01";
-        String user = "admlog";
+        String usuario = "admlog";
 
         String[] codigoBarrasSplit = codigoBarras.split("\\|");
         int ordemProd = Integer.parseInt(codigoBarrasSplit[0]);
@@ -346,10 +344,10 @@ public class LeituraActivity extends AppCompatActivity {
 
         try {
             body.put("codEmpresa", codEmpresa);
-            body.put("tagRfid", etiqRfid);
+            body.put("etiquetaRfid", etiqRfid);
             body.put("ordemProd", ordemProd);
             body.put("ordemSeq", ordemSeq);
-            body.put("user", user);
+            body.put("usuario", usuario);
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -358,10 +356,78 @@ public class LeituraActivity extends AppCompatActivity {
             @Override
             public void onResponse(JSONObject response) {
                 try {
-                    Toast.makeText(LeituraActivity.this, response.getString("mensagem"), Toast.LENGTH_SHORT).show();
+                    int iesOk = response.getInt("iesOk");
+                    String mensagem = response.getString("mensagem");
+
+                    if (iesOk == 1) {
+                        associarLeitura();
+                    } else {
+                        Toast.makeText(LeituraActivity.this, mensagem, Toast.LENGTH_SHORT).show();
+                    }
+
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
+
+                Log.i(TAG, ">>> Response: " + response.toString());
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Toast.makeText(LeituraActivity.this, error.toString(), Toast.LENGTH_LONG).show();
+                Log.i(TAG, ">>> Response: " + error.toString());
+            }
+        });
+
+        queue.add(request);
+    }
+
+    private void associarLeitura() {
+        String etiqRfid = etEtiqRfid.getText().toString();
+        String codigoBarras = etCodigoBarras.getText().toString();
+
+        etCodigoBarras.setText("");
+        etEtiqRfid.setText("");
+        habilitaDesabilitaAssociar();
+
+        RequestQueue queue = Volley.newRequestQueue(this);
+        String url = mApp.API_URL + "/leitura/associar";
+
+        JSONObject body = new JSONObject();
+
+        String codEmpresa = "01";
+        String usuario = "admlog";
+
+        String[] codigoBarrasSplit = codigoBarras.split("\\|");
+        int ordemProd = Integer.parseInt(codigoBarrasSplit[0]);
+        int ordemSeq = Integer.parseInt(codigoBarrasSplit[1]);
+
+        try {
+            body.put("codEmpresa", codEmpresa);
+            body.put("etiquetaRfid", etiqRfid);
+            body.put("ordemProd", ordemProd);
+            body.put("ordemSeq", ordemSeq);
+            body.put("usuario", usuario);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, url, body, new Response.Listener<JSONObject>() {
+            @Override
+            public void onResponse(JSONObject response) {
+                try {
+                    int iesOk = response.getInt("iesOk");
+                    String mensagem = response.getString("mensagem");
+
+                    if (iesOk == 1) {
+                        listarLeituras();
+                    } else {
+                        Toast.makeText(LeituraActivity.this, mensagem, Toast.LENGTH_SHORT).show();
+                    }
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
                 Log.i(TAG, ">>> Response: " + response.toString());
             }
         }, new Response.ErrorListener() {
@@ -376,42 +442,54 @@ public class LeituraActivity extends AppCompatActivity {
     }
 
     private void listarLeituras() {
-//        RequestQueue queue = Volley.newRequestQueue(LeituraActivity.this);
-//        String url = mApp.API_URL + "/leitura";
-//
-//        String codEmpresa = "01";
-//        String usuario = "admlog";
-//
-//        url += "?codEmpresa="+codEmpresa+"&usuario="+usuario;
-//
-//        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, url, null, new Response.Listener<JSONObject>() {
-//            @Override
-//            public void onResponse(JSONObject response) {
-//                Toast.makeText(LeituraActivity.this, response.toString(), Toast.LENGTH_SHORT).show();
-//                Log.i(TAG, ">>> Response: " + response.toString());
-//            }
-//        }, new Response.ErrorListener() {
-//            @Override
-//            public void onErrorResponse(VolleyError error) {
-//                Toast.makeText(LeituraActivity.this, error.toString(), Toast.LENGTH_LONG).show();
-//                Log.i(TAG, ">>> Error: " + error.toString());
-//            }
-//        });
-//
-//        request.setRetryPolicy(new DefaultRetryPolicy(3600, DefaultRetryPolicy.DEFAULT_MAX_RETRIES, DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
-//
-//        queue.add(request);
+        RequestQueue queue = Volley.newRequestQueue(LeituraActivity.this);
+        String url = mApp.API_URL + "/leitura/listar";
 
-        LeituraEtiqueta leitura1 = new LeituraEtiqueta(1, "17/08/2023", "ABC000000001", "12345|1");
-        leituras.add(leitura1);
+        String codEmpresa = "01";
+        String usuario = "admlog";
 
-        LeituraEtiqueta leitura2 = new LeituraEtiqueta(2, "17/08/2023", "ABC000000002", "12345|2");
-        leituras.add(leitura2);
+        url += "?codEmpresa="+codEmpresa+"&usuario="+usuario;
 
-        LeituraEtiqueta leitura3 = new LeituraEtiqueta(3, "17/08/2023", "ABC000000003", "12346|1");
-        leituras.add(leitura3);
+        JsonArrayRequest request = new JsonArrayRequest(Request.Method.GET, url, null, new Response.Listener<JSONArray>() {
+            @Override
+            public void onResponse(JSONArray response) {
+                Log.i(TAG, ">>> Response: " + response.toString());
 
-        leituraAdapter = new LeituraAdapter(leituras);
-        rvLeituras.setAdapter(leituraAdapter);
+                for (int i = 0; i < response.length(); i++) {
+                    try {
+                        JSONObject object = response.getJSONObject(i);
+
+                        int id = object.getInt("id");
+                        String empresa = object.getString("empresa");
+                        int op = object.getInt("op");
+                        int seq = object.getInt("seq");
+                        String etiqRfid = object.getString("etiqRfid");
+                        String dataHoraLeitura = object.getString("dataHoraLeitura");
+                        String dataHoraEfetivacao = object.getString("dataHoraEfetivacao");
+                        String status = object.getString("status");
+                        String usuarioLeitura = object.getString("usuarioLeitura");
+                        String usuarioEfetivacao = object.getString("usuarioEfetivacao");
+
+                        LeituraEtiqueta leitura = new LeituraEtiqueta(id, empresa, op, seq, etiqRfid, dataHoraLeitura, dataHoraEfetivacao, status, usuarioLeitura, usuarioEfetivacao);
+
+                        leituras.add(leitura);
+                        leituraAdapter = new LeituraAdapter(leituras);
+                        rvLeituras.setAdapter(leituraAdapter);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.i(TAG, ">>> Error: " + error.toString());
+                Toast.makeText(LeituraActivity.this, error.toString(), Toast.LENGTH_LONG).show();
+            }
+        });
+
+        request.setRetryPolicy(new DefaultRetryPolicy(3600, DefaultRetryPolicy.DEFAULT_MAX_RETRIES, DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+
+        queue.add(request);
     }
 }

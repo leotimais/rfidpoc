@@ -60,7 +60,7 @@ public class LeituraActivity extends AppCompatActivity {
     private int posicaoSelecionada = -1;
 
     private App mApp;
-    private List<String> tagsList = new ArrayList<>();;
+    private List<String> tagsList = new ArrayList<>();
     private Handler mUiHandler;
     private HandlerThread mReadHandlerThread = new HandlerThread("ReadHandler");
     private Handler mReadHandler;

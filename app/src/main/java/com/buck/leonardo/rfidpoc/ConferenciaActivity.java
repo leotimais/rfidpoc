@@ -20,13 +20,26 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
+import com.android.volley.DefaultRetryPolicy;
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonArrayRequest;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.Volley;
 import com.buck.leonardo.rfidpoc.adapter.LeituraAdapter;
 import com.buck.leonardo.rfidpoc.model.LeituraEtiqueta;
 import com.honeywell.rfidservice.EventListener;
 import com.honeywell.rfidservice.TriggerMode;
+import com.honeywell.rfidservice.rfid.OnTagReadListener;
 import com.honeywell.rfidservice.rfid.RfidReader;
 import com.honeywell.rfidservice.rfid.TagReadData;
 import com.honeywell.rfidservice.rfid.TagReadOption;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -47,9 +60,13 @@ public class ConferenciaActivity extends AppCompatActivity {
     private HandlerThread mReadHandlerThread = new HandlerThread("ReadHandler");
     private Handler mReadHandler;
     private Handler mUiHandler;
+    private Handler apiHandler;
+
+    private boolean mIsReading = false;
 
     private static final int MSG_UPDATE_UI_NORMAL_MODE = 0;
     private static final int MSG_UPDATE_UI_FAST_MODE = 1;
+    private static final int MSG_API_ASSOCIA_CONFERENCIA = 0;
 
     private List<String> tagsList = new ArrayList<>();
     private TagReadOption mTagReadOption = new TagReadOption();
@@ -66,27 +83,13 @@ public class ConferenciaActivity extends AppCompatActivity {
     private BroadcastReceiver barcodeDataReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (ACTION_BARCODE_DATA.equals(intent.getAction())) {
-                int version = intent.getIntExtra("version", 0);
-                if (version >= 1) {
-                    String aimId = intent.getStringExtra("aimId");
-                    String charset = intent.getStringExtra("charset");
-                    String codeId = intent.getStringExtra("codeId");
-                    String data = intent.getStringExtra("data");
-                    byte[] dataBytes = intent.getByteArrayExtra("dataBytes");
-                    String dataBytesStr = bytesToHexString(dataBytes);
-                    String timestamp = intent.getStringExtra("timestamp");
-                    String text = String.format(
-                            "Data:%s\n" +
-                                    "Charset:%s\n" +
-                                    "Bytes:%s\n" +
-                                    "AimId:%s\n" +
-                                    "CodeId:%s\n" +
-                                    "Timestamp:%s\n",
-                            data, charset, dataBytesStr, aimId, codeId, timestamp);
-                    setText(text);
-                }
+        if (ACTION_BARCODE_DATA.equals(intent.getAction())) {
+            int version = intent.getIntExtra("version", 0);
+            if (version >= 1) {
+                String data = intent.getStringExtra("data");
+                setCodigoBarras(data);
             }
+        }
         }
     };
 
@@ -94,6 +97,9 @@ public class ConferenciaActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_conferencia);
+
+        setTitle("Conferência de RFID");
+
         etEtiqRfid = (EditText) findViewById(R.id.et_conf_etiqrfid);
         etOpSeqDev = (EditText) findViewById(R.id.et_conf_opseqdev);
         etCodItem = (EditText) findViewById(R.id.et_conf_coditem);
@@ -111,6 +117,7 @@ public class ConferenciaActivity extends AppCompatActivity {
         rvEtiqLidas.addItemDecoration(new DividerItemDecoration(this, LinearLayout.VERTICAL));
 
         criarItemToucher();
+        listarConferencias();
 
         mApp = App.getInstance();
         initHandler();
@@ -132,6 +139,16 @@ public class ConferenciaActivity extends AppCompatActivity {
         releaseScanner();
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        pararLeitura();
+        mReadHandlerThread.quit();
+        mSyncReadRunnable.release();
+        mUiHandler.removeCallbacksAndMessages(null);
+        apiHandler.removeCallbacksAndMessages(null);
+    }
+
     private void claimScanner() {
         Bundle properties = new Bundle();
         properties.putBoolean("DPR_DATA_INTENT", true);
@@ -147,27 +164,16 @@ public class ConferenciaActivity extends AppCompatActivity {
         sendBroadcast(new Intent(ACTION_RELEASE_SCANNER));
     }
 
-    private void setText(final String text) {
+    private void setCodigoBarras(final String text) {
         if (etCodigoBarras != null) {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     etCodigoBarras.setText(text);
+                    associar();
                 }
             });
         }
-    }
-
-    private String bytesToHexString(byte[] arr) {
-        String s = "[]";
-        if (arr != null) {
-            s = "[";
-            for (int i = 0; i < arr.length; i++) {
-                s += "0x" + Integer.toHexString(arr[i]) + ", ";
-            }
-            s = s.substring(0, s.length() - 2) + "]";
-        }
-        return s;
     }
 
     private void criarItemToucher() {
@@ -207,6 +213,19 @@ public class ConferenciaActivity extends AppCompatActivity {
             }
         };
 
+        apiHandler = new Handler() {
+            @Override
+            public void handleMessage(@NonNull Message msg) {
+                switch (msg.what) {
+                    case MSG_API_ASSOCIA_CONFERENCIA:
+                        validarConferencia();
+                        break;
+                    default:
+                        break;
+                }
+            }
+        };
+
         Thread syncReadThread = new Thread(mSyncReadRunnable);
         syncReadThread.start();
 
@@ -216,15 +235,36 @@ public class ConferenciaActivity extends AppCompatActivity {
 
     private void atualizarEtiquetaLida() {
         HashSet<String> removeDuplicados = new HashSet<>(tagsList);
-        List<String> tags = new ArrayList<>(removeDuplicados);
+        List<String> etiquetas = new ArrayList<>(removeDuplicados);
 
-        if (tags.size() > 1) {
+        if (etiquetas.size() > 1) {
             Toast.makeText(this, "Mais de uma Etiqueta RFID lida, realize nova leitura", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        String tag = tags.get(0);
-        etEtiqRfid.setText(tag);
+        String etiqueta = etiquetas.get(0);
+        etEtiqRfid.setText(etiqueta);
+        associar();
+    }
+
+    private void associar() {
+        String codBarras = etCodigoBarras.getText().toString();
+        String etiqRfid = etEtiqRfid.getText().toString();
+        boolean codBarrasLido = true;
+        boolean etiqRfidLida = true;
+
+        if (codBarras == null || codBarras.trim().isEmpty())
+            codBarrasLido = false;
+        if (etiqRfid == null || etiqRfid.trim().isEmpty())
+            etiqRfidLida = false;
+
+        if (codBarrasLido && etiqRfidLida) {
+            Message message = Message.obtain();
+            message.what = MSG_UPDATE_UI_NORMAL_MODE;
+            apiHandler.removeMessages(message.what);
+            apiHandler.sendMessage(message);
+        }
+
     }
 
     private SyncReadRunnable mSyncReadRunnable = new SyncReadRunnable();
@@ -239,15 +279,17 @@ public class ConferenciaActivity extends AppCompatActivity {
         @Override
         public void run() {
             while (mRun) {
-                TagReadData[] trds = getReader().syncRead(-1, 1000);
-                for (TagReadData t : trds) {
-                    String tag = t.getEpcHexStr();
+                if (mIsReading && mApp.isRFIDReady()) {
+                    TagReadData[] trds = getReader().syncRead(-1, 1000);
+                    for (TagReadData t : trds) {
+                        String tag = t.getEpcHexStr();
 
-                    tagsList.add(tag);
-                    Message message = Message.obtain();
-                    message.what = MSG_UPDATE_UI_NORMAL_MODE;
-                    mUiHandler.removeMessages(message.what);
-                    mUiHandler.sendMessage(message);
+                        tagsList.add(tag);
+                        Message message = Message.obtain();
+                        message.what = MSG_UPDATE_UI_NORMAL_MODE;
+                        mUiHandler.removeMessages(message.what);
+                        mUiHandler.sendMessage(message);
+                    }
                 }
 
                 try {
@@ -268,6 +310,7 @@ public class ConferenciaActivity extends AppCompatActivity {
         @Override
         public void onDeviceDisconnected(Object o) {
             Log.i(TAG, ">>> onDeviceDisconnected");
+            mIsReading = false;
         }
 
         @Override
@@ -280,6 +323,10 @@ public class ConferenciaActivity extends AppCompatActivity {
             Log.i(TAG, ">>> onRfidTriggered");
 
             if (trigger) {
+                if (mIsReading) {
+                    pararLeitura();
+                }
+
                 comecarLeitura();
             } else {
                 pararLeitura();
@@ -302,22 +349,28 @@ public class ConferenciaActivity extends AppCompatActivity {
     }
 
     private void pararLeituraInterno() {
+        mIsReading = false;
         RfidReader reader = getReader();
         reader.stopRead();
+        reader.removeOnTagReadListener(dataListener);
     }
 
     private void comecarLeitura() {
-        mReadHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                comecarLeituraInterno();
-            }
-        });
+        if (mApp.checkIsRFIDReady()) {
+            tagsList.clear();
+            mReadHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    comecarLeituraInterno();
+                }
+            });
+        }
     }
 
     private void comecarLeituraInterno() {
+        mIsReading = true;
         RfidReader reader = getReader();
-//        reader.setOnTagReadListener(dataListener);
+        reader.setOnTagReadListener(dataListener);
         reader.read(-1, mTagReadOption);
 
         Message msg = Message.obtain();
@@ -325,7 +378,192 @@ public class ConferenciaActivity extends AppCompatActivity {
         mUiHandler.sendMessage(msg);
     }
 
+    private OnTagReadListener dataListener = new OnTagReadListener() {
+        @Override
+        public void onTagRead(TagReadData[] tagReadData) {
+            atualizaLista(tagReadData);
+        }
+    };
+
+    private void atualizaLista(TagReadData[] tagReadData) {
+        for (TagReadData trd : tagReadData) {
+            atualizaLista(trd);
+        }
+    }
+
+    private void atualizaLista(TagReadData trd) {
+    }
+
     private RfidReader getReader() {
         return mApp.rfidReader;
+    }
+
+    private void validarConferencia() {
+        String etiqRfid = etEtiqRfid.getText().toString();
+        String codigoBarras = etCodigoBarras.getText().toString();
+
+        RequestQueue queue = Volley.newRequestQueue(this);
+        String url = mApp.API_URL + "/conferencia/validar";
+
+        JSONObject body = new JSONObject();
+
+        String codEmpresa = "01";
+        String usuario = "admlog";
+
+        String[] codigoBarrasSplit = codigoBarras.split("\\|");
+        int ordemProd = Integer.parseInt(codigoBarrasSplit[0]);
+        int ordemSeq = Integer.parseInt(codigoBarrasSplit[1]);
+
+        try {
+            body.put("codEmpresa", codEmpresa);
+            body.put("etiquetaRfid", etiqRfid);
+            body.put("ordemProd", ordemProd);
+            body.put("ordemSeq", ordemSeq);
+            body.put("usuario", usuario);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, url, body, new Response.Listener<JSONObject>() {
+            @Override
+            public void onResponse(JSONObject response) {
+                try {
+                    int iesOk = response.getInt("iesOk");
+                    String mensagem = response.getString("mensagem");
+
+                    if (iesOk == 1) {
+                        associarConferencia();
+                    } else {
+                        Toast.makeText(ConferenciaActivity.this, mensagem, Toast.LENGTH_SHORT).show();
+                    }
+
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+                Log.i(TAG, ">>> Response: " + response.toString());
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Toast.makeText(ConferenciaActivity.this, error.toString(), Toast.LENGTH_LONG).show();
+                Log.i(TAG, ">>> Response: " + error.toString());
+            }
+        });
+
+        queue.add(request);
+    }
+
+    private void associarConferencia() {
+        String etiqRfid = etEtiqRfid.getText().toString();
+        String codigoBarras = etCodigoBarras.getText().toString();
+
+        RequestQueue queue = Volley.newRequestQueue(this);
+        String url = mApp.API_URL + "/conferencia/associar";
+
+        JSONObject body = new JSONObject();
+
+        String codEmpresa = "01";
+        String usuario = "admlog";
+
+        String[] codigoBarrasSplit = codigoBarras.split("\\|");
+        int ordemProd = Integer.parseInt(codigoBarrasSplit[0]);
+        int ordemSeq = Integer.parseInt(codigoBarrasSplit[1]);
+
+        try {
+            body.put("codEmpresa", codEmpresa);
+            body.put("etiquetaRfid", etiqRfid);
+            body.put("ordemProd", ordemProd);
+            body.put("ordemSeq", ordemSeq);
+            body.put("usuario", usuario);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, url, body, new Response.Listener<JSONObject>() {
+            @Override
+            public void onResponse(JSONObject response) {
+                try {
+                    int iesOk = response.getInt("iesOk");
+                    String mensagem = response.getString("mensagem");
+
+                    if (iesOk == 1) {
+                        etCodigoBarras.setText("");
+                        etEtiqRfid.setText("");
+                        etOpSeqDev.setText("");
+                        etCodItem.setText("");
+                        listarConferencias();
+                    } else {
+                        Toast.makeText(ConferenciaActivity.this, mensagem, Toast.LENGTH_SHORT).show();
+                    }
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+                Log.i(TAG, ">>> Response: " + response.toString());
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Toast.makeText(ConferenciaActivity.this, error.toString(), Toast.LENGTH_LONG).show();
+                Log.i(TAG, ">>> Response: " + error.toString());
+            }
+        });
+
+        queue.add(request);
+    }
+
+    private void listarConferencias() {
+        RequestQueue queue = Volley.newRequestQueue(this);
+        String url = mApp.API_URL + "/conferencia/listar";
+
+        String codEmpresa = "01";
+        String usuario = "admlog";
+
+        url += "?codEmpresa="+codEmpresa+"&usuario="+usuario;
+
+        JsonArrayRequest request = new JsonArrayRequest(Request.Method.GET, url, null, new Response.Listener<JSONArray>() {
+            @Override
+            public void onResponse(JSONArray response) {
+                Log.i(TAG, ">>> Response: " + response.toString());
+
+                etiqLidasList.clear();
+
+                for (int i = 0; i < response.length(); i++) {
+                    try {
+                        JSONObject object = response.getJSONObject(i);
+
+                        int id = object.getInt("id");
+                        String empresa = object.getString("empresa");
+                        int op = object.getInt("op");
+                        int seq = object.getInt("seq");
+                        String etiqRfid = object.getString("etiqRfid");
+                        String dataHoraLeitura = object.getString("dataHoraLeitura");
+                        String dataHoraEfetivacao = object.getString("dataHoraEfetivacao");
+                        String status = object.getString("status");
+                        String usuarioLeitura = object.getString("usuarioLeitura");
+                        String usuarioEfetivacao = object.getString("usuarioEfetivacao");
+
+                        LeituraEtiqueta leitura = new LeituraEtiqueta(id, empresa, op, seq, etiqRfid, dataHoraLeitura, dataHoraEfetivacao, status, usuarioLeitura, usuarioEfetivacao);
+
+                        etiqLidasList.add(leitura);
+                        etiqLidasAdapter = new LeituraAdapter(etiqLidasList);
+                        rvEtiqLidas.setAdapter(etiqLidasAdapter);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.i(TAG, ">>> Error: " + error.toString());
+                Toast.makeText(ConferenciaActivity.this, error.toString(), Toast.LENGTH_LONG).show();
+            }
+        });
+
+        request.setRetryPolicy(new DefaultRetryPolicy(3600, DefaultRetryPolicy.DEFAULT_MAX_RETRIES, DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+
+        queue.add(request);
     }
 }

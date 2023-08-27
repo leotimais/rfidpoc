@@ -19,7 +19,7 @@ import java.util.Map;
 public class App extends Application {
     private static final String TAG = "App";
 
-    public static final String API_URL = "http://c8ca-191-13-138-182.ngrok-free.app/api";
+    public static final String API_URL = "http://8148-187-183-57-252.ngrok-free.app/api";
 
     public RfidReader rfidReader;
 
